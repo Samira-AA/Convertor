@@ -66,7 +66,8 @@ public class MeteredConversionServiceImpl implements MeteredConversionService {
             throw new CommercialException(HttpStatus.FORBIDDEN, "Cliente deshabilitado");
         }
         if (client.getConversionesRestantes() != null && client.getConversionesRestantes() <= 0) {
-            throw new CommercialException(HttpStatus.TOO_MANY_REQUESTS, "No quedan conversiones disponibles");
+            throw new CommercialException(HttpStatus.TOO_MANY_REQUESTS,
+                    "No quedan conversiones disponibles para agregar documentos");
         }
     }
 

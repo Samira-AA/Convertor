@@ -1,5 +1,8 @@
 package com.sumax.pdfa.sdk;
 
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -20,6 +23,7 @@ import java.util.UUID;
  */
 public final class PdfaClient {
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(330);
+    private static final JsonFactory JSON_FACTORY = new JsonFactory();
 
     private final HttpClient httpClient;
     private final URI conversionEndpoint;
@@ -77,7 +81,7 @@ public final class PdfaClient {
                     .build();
             HttpResponse<byte[]> response = this.httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray());
             if (response.statusCode() != 200) {
-                throw httpError(response.statusCode());
+                throw httpError(response);
             }
             byte[] output = response.body();
             String contentType = response.headers().firstValue("Content-Type").orElse("")
@@ -128,15 +132,44 @@ public final class PdfaClient {
         return URI.create(normalized + "/conversion-pdfa");
     }
 
-    private static PdfaClientException httpError(int statusCode) {
+    private static PdfaClientException httpError(HttpResponse<byte[]> response) {
+        int statusCode = response.statusCode();
+        String detail = problemDetail(response.body());
+        if (detail != null) {
+            return new PdfaClientException(statusCode, detail);
+        }
         String message = switch (statusCode) {
             case 400 -> "Converter rechazó el archivo o los parámetros";
             case 401 -> "API key no válida o cliente no habilitado";
             case 403 -> "El cliente no tiene permiso para convertir";
             case 413 -> "El archivo supera el tamaño permitido";
-            case 429 -> "No quedan conversiones disponibles";
             default -> "Converter devolvió un error HTTP " + statusCode;
         };
         return new PdfaClientException(statusCode, message);
+    }
+
+    /** Lee solo el detalle publico del error; nunca propaga HTML ni el cuerpo completo. */
+    private static String problemDetail(byte[] body) {
+        if (body.length == 0 || body.length > 65536) {
+            return null;
+        }
+        try (JsonParser parser = JSON_FACTORY.createParser(body)) {
+            if (parser.nextToken() != JsonToken.START_OBJECT) {
+                return null;
+            }
+            String detail = null;
+            while (parser.nextToken() == JsonToken.FIELD_NAME) {
+                String fieldName = parser.currentName();
+                JsonToken valueToken = parser.nextToken();
+                if ("detail".equals(fieldName) && valueToken == JsonToken.VALUE_STRING) {
+                    detail = parser.getText();
+                }
+                parser.skipChildren();
+            }
+            return parser.currentToken() == JsonToken.END_OBJECT && parser.nextToken() == null
+                    && detail != null && !detail.isBlank() ? detail : null;
+        } catch (IOException exception) {
+            return null;
+        }
     }
 }
