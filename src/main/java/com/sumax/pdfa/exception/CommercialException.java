@@ -1,0 +1,16 @@
+package com.sumax.pdfa.exception;
+
+import org.springframework.http.HttpStatus;
+
+public class CommercialException extends RuntimeException {
+    private final HttpStatus status;
+
+    public CommercialException(HttpStatus status, String message) {
+        super(message);
+        this.status = status;
+    }
+
+    public HttpStatus status() {
+        return this.status;
+    }
+}

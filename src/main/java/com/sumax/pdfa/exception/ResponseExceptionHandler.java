@@ -11,6 +11,13 @@ import org.springframework.web.multipart.support.MissingServletRequestPartExcept
 @RestControllerAdvice
 public class ResponseExceptionHandler {
 
+    @ExceptionHandler(CommercialException.class)
+    public ResponseEntity<ProblemDetail> handleCommercial(CommercialException exception) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(exception.status(), exception.getMessage());
+        problem.setTitle("Solicitud comercial rechazada");
+        return ResponseEntity.status(exception.status()).body(problem);
+    }
+
     @ExceptionHandler(ValidateSumaxException.class)
     public ResponseEntity<ProblemDetail> handleValidate(final ValidateSumaxException ex) {
         return this.build(ex.getError(), ex.getMessage());

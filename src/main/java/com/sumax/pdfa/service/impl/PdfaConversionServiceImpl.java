@@ -1,7 +1,6 @@
 package com.sumax.pdfa.service.impl;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -25,6 +24,7 @@ import org.verapdf.pdfa.PDFAParser;
 import org.verapdf.pdfa.PDFAValidator;
 import org.verapdf.pdfa.flavours.PDFAFlavour;
 import org.verapdf.pdfa.results.ValidationResult;
+import org.verapdf.pdfa.validation.validators.ValidatorConfigBuilder;
 
 import lombok.extern.slf4j.Slf4j;
 import stirling.software.officeconvert.pdfa.PdfALevel;
@@ -82,7 +82,7 @@ public class PdfaConversionServiceImpl implements PdfaConversionService {
             final PdfToPdfA.Result result = PdfToPdfA.convert(inputPath, outputPath, options);
             result.warnings().forEach(warning -> log.info("advertencia conversion {}", warning));
         } catch (IOException e) {
-            log.warn("conversionf allida {}", e.getMessage());
+            log.warn("Conversión fallida: {}", e.getMessage());
             if (e instanceof InvalidPasswordException || e.getCause() instanceof InvalidPasswordException) {
                 throw new ValidateSumaxException(EnumPdfaError.ER000004);
             }
@@ -92,14 +92,15 @@ public class PdfaConversionServiceImpl implements PdfaConversionService {
 
     private void validatePdfa(final Path outputPath, final String level) {
         final PDFAFlavour flavour = PDFAFlavour.fromString(level);
-        try (InputStream input = Files.newInputStream(outputPath);
-             PDFAParser parser = Foundries.defaultInstance().createParser(input, flavour);
-             PDFAValidator validator = Foundries.defaultInstance().createValidator(flavour, false)) {
+        final var validationConfig = ValidatorConfigBuilder.defaultBuilder().flavour(flavour)
+                .recordPasses(false).showErrorMessages(false).build();
+        try (PDFAParser parser = Foundries.defaultInstance().createParser(outputPath.toFile(), flavour);
+             PDFAValidator validator = Foundries.defaultInstance().createValidator(validationConfig)) {
 
             final ValidationResult result = validator.validate(parser);
             if (!result.isCompliant()) {
                 result.getFailedChecks()
-                    .forEach((rule, times) -> log.warn("regla inclumplida {},{}", rule, times));
+                    .forEach((rule, times) -> log.warn("Regla incumplida {},{}", rule, times));
                 throw new ValidateSumaxException(EnumPdfaError.ER000007);
             }
             log.info("validado correctamente con veraPDF {}", level);

@@ -31,3 +31,8 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Resultados privados e información local de ejecución.
+pdfa-results/
+.env
+.env.*
