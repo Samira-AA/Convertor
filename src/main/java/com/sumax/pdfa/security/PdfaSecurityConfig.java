@@ -35,8 +35,8 @@ public class PdfaSecurityConfig {
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/conversion-pdfa").hasAuthority("PDFA_CLIENT")
-                        .requestMatchers(HttpMethod.GET, "/api/clients/me/consumption").hasAuthority("PDFA_CLIENT")
-                        .requestMatchers("/api/clients", "/api/clients/**").hasAuthority("PDFA_ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/clientes/conversiones-restantes").hasAuthority("PDFA_CLIENT")
+                        .requestMatchers("/api/clientes", "/api/clientes/**").hasAuthority("PDFA_ADMIN")
                         .anyRequest().denyAll())
                 .addFilterBefore(new ClientAuthenticationFilter(clientDao, properties), AnonymousAuthenticationFilter.class)
                 .build();

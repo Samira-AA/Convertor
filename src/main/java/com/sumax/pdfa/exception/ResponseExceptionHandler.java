@@ -1,7 +1,9 @@
 package com.sumax.pdfa.exception;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -10,6 +12,13 @@ import org.springframework.web.multipart.support.MissingServletRequestPartExcept
 
 @RestControllerAdvice
 public class ResponseExceptionHandler {
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ProblemDetail> handleUnreadableBody(HttpMessageNotReadableException exception) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST,
+                "El cuerpo JSON contiene un formato o tipo de dato no valido");
+        return ResponseEntity.badRequest().body(problem);
+    }
 
     @ExceptionHandler(CommercialException.class)
     public ResponseEntity<ProblemDetail> handleCommercial(CommercialException exception) {

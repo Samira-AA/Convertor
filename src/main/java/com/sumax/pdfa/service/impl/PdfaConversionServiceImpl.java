@@ -6,13 +6,20 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Locale;
 
+import com.sumax.pdfa.dao.ClientDao;
+import com.sumax.pdfa.dto.IdentidadCliente;
+import com.sumax.pdfa.entity.Clientes;
+import com.sumax.pdfa.exception.CommercialException;
 import com.sumax.pdfa.exception.EnumPdfaError;
 import com.sumax.pdfa.exception.ValidateSumaxException;
 import com.sumax.pdfa.service.PdfaConversionService;
 import jakarta.annotation.PostConstruct;
 import org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.FileSystemUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.verapdf.core.EncryptedPdfException;
@@ -33,6 +40,8 @@ import stirling.software.officeconvert.pdfa.PdfToPdfA;
 @Slf4j
 @Service
 public class PdfaConversionServiceImpl implements PdfaConversionService {
+    private final ClientDao clientDao;
+    private final TransactionTemplate transactions;
 
     @Value("${pdfa.max-pages}")
     private int maxPages;
@@ -40,19 +49,38 @@ public class PdfaConversionServiceImpl implements PdfaConversionService {
     @Value("${pdfa.timeout-seconds}")
     private long timeoutSeconds;
 
+    public PdfaConversionServiceImpl(ClientDao clientDao, PlatformTransactionManager transactionManager) {
+        this.clientDao = clientDao;
+        this.transactions = new TransactionTemplate(transactionManager);
+    }
+
     @PostConstruct
     private void initVeraPdf() {
         VeraGreenfieldFoundryProvider.initialise();
     }
 
     @Override
-    public byte[] convertToPdfa(final MultipartFile file, final String level) {
+    public byte[] convert(IdentidadCliente identity, MultipartFile file, String requestedProfile) {
+        String profile = requestedProfile == null ? "" : requestedProfile.trim().toLowerCase(Locale.ROOT);
+        PdfALevel pdfaLevel = this.getPdfaLevel(profile);
         if (file == null || file.isEmpty()) {
             throw new ValidateSumaxException(EnumPdfaError.ER000001);
         }
-        final String normalizedLevel = level == null ? "" : level.trim().toLowerCase(Locale.ROOT);
-        final PdfALevel pdfaLevel = this.getPdfaLevel(normalizedLevel);
+        if (file.getSize() > 20L * 1024 * 1024) {
+            throw new ValidateSumaxException(EnumPdfaError.ER000002);
+        }
+        Clientes client = this.clientDao.findById(identity.id()).orElseThrow(this::clientNotFound);
+        this.validateClient(client);
 
+        byte[] output = this.convertFile(file, profile, pdfaLevel);
+        if (output.length == 0) {
+            throw new ValidateSumaxException(EnumPdfaError.ER000006);
+        }
+        this.discountConversion(identity.id());
+        return output;
+    }
+
+    private byte[] convertFile(MultipartFile file, String profile, PdfALevel pdfaLevel) {
         Path tempDir = null;
         try {
             tempDir = Files.createTempDirectory("pdfa-");
@@ -61,7 +89,7 @@ public class PdfaConversionServiceImpl implements PdfaConversionService {
             file.transferTo(inputPath);
 
             this.executeConversion(inputPath, outputPath, pdfaLevel);
-            this.validatePdfa(outputPath, normalizedLevel);
+            this.validatePdfa(outputPath, profile);
 
             return Files.readAllBytes(outputPath);
         } catch (IOException _) {
@@ -71,6 +99,30 @@ public class PdfaConversionServiceImpl implements PdfaConversionService {
                 FileSystemUtils.deleteRecursively(tempDir.toFile());
             }
         }
+    }
+
+    private void discountConversion(long clientId) {
+        this.transactions.executeWithoutResult(transaction -> {
+            Clientes client = this.clientDao.findLockedById(clientId).orElseThrow(this::clientNotFound);
+            this.validateClient(client);
+            if (client.getConversionesRestantes() != null) {
+                client.setConversionesRestantes(client.getConversionesRestantes() - 1);
+            }
+        });
+    }
+
+    private void validateClient(Clientes client) {
+        if (!client.isEstado()) {
+            throw new CommercialException(HttpStatus.FORBIDDEN, "Cliente deshabilitado");
+        }
+        if (client.getConversionesRestantes() != null && client.getConversionesRestantes() <= 0) {
+            throw new CommercialException(HttpStatus.TOO_MANY_REQUESTS,
+                    "No quedan conversiones disponibles para agregar documentos");
+        }
+    }
+
+    private CommercialException clientNotFound() {
+        return new CommercialException(HttpStatus.NOT_FOUND, "Cliente no encontrado");
     }
 
     private void executeConversion(final Path inputPath, final Path outputPath, final PdfALevel level) {

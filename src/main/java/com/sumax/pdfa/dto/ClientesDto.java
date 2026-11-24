@@ -2,19 +2,18 @@ package com.sumax.pdfa.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.sumax.pdfa.entity.ApiClient;
+import com.sumax.pdfa.entity.Clientes;
 import java.io.Serializable;
 import lombok.Builder;
 
-/** Datos de {@link ApiClient}; ID, saldo y API key son de salida y no se aceptan del consumidor. */
+/** Datos de {@link Clientes}; ID y API key son de salida. El codigo se asigna solo al crear. */
 @Builder
-public record ClientDto(
+public record ClientesDto(
         @JsonProperty(access = JsonProperty.Access.READ_ONLY) Long id,
-        String code,
-        String name,
-        @JsonProperty(access = JsonProperty.Access.WRITE_ONLY) Long initialConversions,
-        Boolean enabled,
-        @JsonProperty(access = JsonProperty.Access.READ_ONLY) Long remainingConversions,
+        String codigo,
+        String nombre,
+        Boolean estado,
+        Integer conversionesRestantes,
         @JsonProperty(access = JsonProperty.Access.READ_ONLY)
         @JsonInclude(JsonInclude.Include.NON_NULL) String apiKey
 ) implements Serializable {

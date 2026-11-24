@@ -1,16 +1,20 @@
 package com.sumax.pdfa.service;
 
-import com.sumax.pdfa.dto.ClientDto;
+import com.sumax.pdfa.dto.ClientesDto;
+import com.sumax.pdfa.dto.ConversionesRestantesDto;
 import java.util.List;
 
 public interface ClientService {
-    ClientDto create(ClientDto request);
+    ClientesDto create(ClientesDto request);
 
-    List<ClientDto> list();
+    List<ClientesDto> list();
 
-    ClientDto consumption(long id);
+    ClientesDto findById(long id);
 
-    ClientDto rotateKey(long id);
+    ConversionesRestantesDto findConversionesRestantes(long id);
 
-    ClientDto setStatus(long id, ClientDto request);
+    ClientesDto update(long id, ClientesDto request);
+
+    ClientesDto rotateKey(long id);
+
 }

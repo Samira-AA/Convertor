@@ -25,8 +25,8 @@ import org.hibernate.type.SqlTypes;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "pdfa_cliente")
-public class ApiClient implements Serializable {
+@Table(name = "clientes")
+public class Clientes implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 
@@ -35,7 +35,7 @@ public class ApiClient implements Serializable {
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "codigo", length = 64, nullable = false, unique = true)
+    @Column(name = "codigo", length = 64, nullable = false, unique = true, updatable = false)
     private String codigo;
 
     @Column(name = "nombre", length = 150, nullable = false)
@@ -52,5 +52,5 @@ public class ApiClient implements Serializable {
 
     /** Saldo descontado después de convertir y validar. Null indica cuota ilimitada. */
     @Column(name = "conversiones_restantes")
-    private Long conversionesRestantes;
+    private Integer conversionesRestantes;
 }

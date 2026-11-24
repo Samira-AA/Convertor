@@ -1,8 +1,8 @@
 package com.sumax.pdfa.security;
 
 import com.sumax.pdfa.dao.ClientDao;
-import com.sumax.pdfa.dto.ClientIdentity;
-import com.sumax.pdfa.entity.ApiClient;
+import com.sumax.pdfa.dto.IdentidadCliente;
+import com.sumax.pdfa.entity.Clientes;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -40,13 +40,13 @@ public final class ClientAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
         if (apiKey != null) {
-            ApiClient client = apiKey.length() > 200 ? null : this.clientDao.findByApiKeyHash(CredentialHash.sha256(apiKey))
-                    .filter(ApiClient::isEstado).orElse(null);
+            Clientes client = apiKey.length() > 200 ? null : this.clientDao.findByApiKeyHash(CredentialHash.sha256(apiKey))
+                    .filter(Clientes::isEstado).orElse(null);
             if (client == null) {
                 response.sendError(401, "Clave de cliente no válida");
                 return;
             }
-            this.authenticate(new ClientIdentity(client.getId()), "PDFA_CLIENT");
+            this.authenticate(new IdentidadCliente(client.getId()), "PDFA_CLIENT");
         } else if (adminKey != null) {
             String expected = this.properties.adminKey();
             if (expected == null || expected.length() < 32 || adminKey.length() > 200

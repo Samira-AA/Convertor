@@ -1,13 +1,11 @@
 package com.sumax.pdfa.controller;
 
-import com.sumax.pdfa.dto.ClientDto;
-import com.sumax.pdfa.dto.ClientIdentity;
+import com.sumax.framework.models.rest.ApiResponse;
+import com.sumax.pdfa.dto.ClientesDto;
+import com.sumax.pdfa.dto.ConversionesRestantesDto;
+import com.sumax.pdfa.dto.IdentidadCliente;
 import com.sumax.pdfa.service.ClientService;
-import java.util.List;
-
 import lombok.RequiredArgsConstructor;
-
-import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -21,37 +19,38 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/clients")
+@RequestMapping("/api/clientes")
 public class ClientController {
-    private final ClientService service;
+    private final ClientService clientService;
 
     @PostMapping
-    public ResponseEntity<ClientDto> create(@RequestBody ClientDto request) {
-        return ResponseEntity.status(HttpStatus.CREATED).cacheControl(CacheControl.noStore()).body(this.service.create(request));
+    public ResponseEntity<ApiResponse> create(@RequestBody ClientesDto request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.create("Cliente creado", this.clientService.create(request)));
     }
 
     @GetMapping
-    public List<ClientDto> list() {
-        return this.service.list();
+    public ResponseEntity<ApiResponse> list() {
+        return ResponseEntity.ok(ApiResponse.ok("Clientes consultados", this.clientService.list()));
     }
 
-    @GetMapping("/me/consumption")
-    public ClientDto consumption(@AuthenticationPrincipal ClientIdentity identity) {
-        return this.service.consumption(identity.clientId());
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse> findById(@PathVariable long id) {
+        return ResponseEntity.ok(ApiResponse.ok("Cliente consultado", this.clientService.findById(id)));
     }
 
-    @GetMapping("/{id}/consumption")
-    public ClientDto consumption(@PathVariable long id) {
-        return this.service.consumption(id);
+    @PatchMapping("/{id}")
+    public ResponseEntity<ApiResponse> update(@PathVariable long id, @RequestBody ClientesDto request) {
+        return ResponseEntity.ok(ApiResponse.ok("Cliente actualizado", this.clientService.update(id, request)));
     }
 
-    @PostMapping("/{id}/api-keys")
-    public ResponseEntity<ClientDto> rotateKey(@PathVariable long id) {
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(this.service.rotateKey(id));
+    @PostMapping("/{id}/api-key")
+    public ResponseEntity<ApiResponse> rotateKey(@PathVariable long id) {
+        return ResponseEntity.ok(ApiResponse.ok("API key renovada", this.clientService.rotateKey(id)));
     }
 
-    @PatchMapping("/{id}/status")
-    public ClientDto setStatus(@PathVariable long id, @RequestBody ClientDto request) {
-        return this.service.setStatus(id, request);
+    @GetMapping("/conversiones-restantes")
+    public ResponseEntity<ConversionesRestantesDto> consumption(@AuthenticationPrincipal IdentidadCliente identity) {
+        return ResponseEntity.ok(this.clientService.findConversionesRestantes(identity.id()));
     }
 }
